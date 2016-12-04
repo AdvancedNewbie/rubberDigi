@@ -197,7 +197,7 @@ def parseDuckyLine(i):
   return o
 
 #Arguement Parser
-parser = argparse.ArgumentParser(description='Converts USB rubber ducky scripts to a Nethunter format', epilog="Quack Quack")
+parser = argparse.ArgumentParser(description='Converts USB rubber ducky scripts to a DigiSpark Arduino sketch.', epilog="Quack Quack")
 parser.add_argument('duckyscript', help='Ducky script to convert')
 parser.add_argument('outdirname', help='Output script directory')
 
