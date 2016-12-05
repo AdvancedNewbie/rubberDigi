@@ -41,7 +41,8 @@ void loop(){
   //START:  Parsed by rubberDigi Script
 '''
 
-sketchClosing = '''  //END:  Parsed by rubberDigi Script
+sketchClosing = '''
+  //END:  Parsed by rubberDigi Script
 
   delay(1000);
   while(1){
@@ -79,7 +80,7 @@ rubberDigi = \
   "right" : "KEY_RIGHTARROW",
 
   "numlock" : "KEYPAD_NUMLOCK",
-  "enter" : "KEYPAD_ENTER",
+  "keypad_enter" : "KEYPAD_ENTER",
 
   "mute" : "KEY_MUTE",
   "volumeup" : "KEY_VOLUME_UP",
@@ -91,6 +92,7 @@ rubberDigi = \
 
   "leftcontrol" : "KEY_LEFTCONTROL",
   "leftshift" : "KEY_LEFTSHIFT",
+  "shift" : "KEY_LEFTSHIFT",
   "leftalt" : "KEY_LEFTALT",
   "alt" : "KEY_LEFTALT",
   "leftgui" : "KEY_LEFT_GUI",
@@ -157,29 +159,24 @@ rubberDigi = \
 
 global lastCommand
 
-def parseDuckyLine(i):
-  global lastCommand
-  o = ""
-  split = i.split(" ")
+def sendKeyStroke(i):
+    split = i.split(" ")
+    o = "DigiKeyboard.sendKeyStroke("
+    if len(split) > 1:
+        for x in range(0, len(split)):
+          if x>=1 and x<len(split):
+            o = o + ", "
+          o = o + rubberDigi[split[x].lower()]
 
-  if split[0] == "DELAY":
-    o = "DigiKeyboard.delay(" + split[1] + ");"
+          if x == len(split) - 1:
+            o = o + ");"
+    else:
+        o = o + rubberDigi[split[0].lower()]
+        o = o + ");"
+    return o
 
-  elif split[0] == "REM":
-    o = "// " + split[1]
-
-  elif split[0] == "STRING":
-    o = "DigiKeyboard.print(\""
-    for x in range(1, len(split)):
-      o = o + split[x]
-    o = o + "\");"
-
-  elif split[0] == "REPLAY":
-    o = "for (int i=0; i < " + split[1] + "; i++) {\n"
-    o = o + '    ' + lastCommand
-    o = o + "\n  }"
-
-  else:
+def sendModKeyStroke(i):
+    split = i.split(" ")
     o = "DigiKeyboard.sendKeyStroke("
     if len(split) > 1:
         for x in range(1, len(split)):
@@ -192,12 +189,55 @@ def parseDuckyLine(i):
     else:
         o = o + rubberDigi[split[0].lower()]
         o = o + ");"
+    return o
+
+def parseDuckyLine(i):
+  global lastCommand
+  o = ""
+  split = i.split(" ")
+
+  if split[0] == "DELAY":
+    o = "\n  DigiKeyboard.delay(" + split[1] + ");"
+
+  elif split[0] == "REM":
+    o = "// " + split[1]
+
+  elif split[0] == "STRING":
+    string = i[7:]
+    string = string.replace("\\", "\\\\")
+    string = string.replace("\"", "\\\"")
+    o = "DigiKeyboard.print(\""
+    o = o + string
+    o = o + "\");"
+
+  elif split[0] == "REPLAY":
+    o = "for (int i=0; i < " + split[1] + "; i++) {\n"
+    o = o + '    ' + lastCommand
+    o = o + "\n  }"
+
+  elif split[0] == "GUI" or split[0] == "ALT" or split[0] == "CTRL" or split[0] == "SHIFT":
+    o = sendModKeyStroke(i)
+
+  elif split[0] == "CTRL-SHIFT":
+    split = i.split(" ")
+    o = "DigiKeyboard.sendKeyStroke(" + rubberDigi[split[1].lower()] + ", " + "KEY_LEFTCONTROL | KEY_LEFTSHIFT);"
+
+  elif split[0] == "CTRL-ALT":
+    split = i.split(" ")
+    o = "DigiKeyboard.sendKeyStroke(" + rubberDigi[split[1].lower()] + ", " + "KEY_LEFTCONTROL | KEY_LEFTALT);"
+
+  elif split[0] == "ALT-SHIFT":
+    split = i.split(" ")
+    o = "DigiKeyboard.sendKeyStroke(" + rubberDigi[split[1].lower()] + ", " + "KEY_LEFTALT | KEY_LEFTSHIFT);"
+
+  else:
+    o = sendKeyStroke(i)
 
   lastCommand = o
   return o
 
 #Arguement Parser
-parser = argparse.ArgumentParser(description='Converts USB rubber ducky scripts to a DigiSpark Arduino sketch.', epilog="Quack Quack")
+parser = argparse.ArgumentParser(description='Converts USB rubber ducky scripts to an DigiSpark arduino script. ', epilog="Quack Quack")
 parser.add_argument('duckyscript', help='Ducky script to convert')
 parser.add_argument('outdirname', help='Output script directory')
 
@@ -218,8 +258,9 @@ dest.write("//Converted at " + str(datetime.now()))
 dest.write(sketchOpening)
 
 for line in infile:
-  outString = parseDuckyLine(line.strip())
-  dest.write('  ' + outString + '\n')
+  if line.strip() != '':
+    outString = parseDuckyLine(line.strip())
+    dest.write('  ' + outString + '\n')
 
 dest.write(sketchClosing)
 
